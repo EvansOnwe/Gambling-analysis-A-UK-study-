@@ -20,8 +20,6 @@ st.set_page_config(
 # ---------------------------------------------------------
 
 
-
-
 st.markdown("""
 <style>
 html {
@@ -119,9 +117,13 @@ div[role="radiogroup"] > label span {
 # Load the model
 @st.cache_resource
 def load_model():
-    model_path = r"C:\Users\Admin\Documents\gambling project\models\best_model\best_model.pkl"
+    model_path = r"C:\Users\user\Documents\gambling project\models\best_model\best_model.pkl"
     if os.path.exists(model_path):
-        return joblib.load(model_path)
+        try:
+            return joblib.load(model_path)
+        except Exception as e:
+            st.error(f"Error loading model: {str(e)}")
+            return None
     else:
         st.error(f"Model file not found: {model_path}")
         return None
@@ -132,7 +134,7 @@ loaded_model = load_model()
 # Load data
 @st.cache_data
 def load_base_data():
-    file_path = r"C:\Users\Admin\Documents\gambling project\outputs\combined_data2.pkl"
+    file_path = r"C:\Users\user\Documents\gambling project\outputs\combined_data2.pkl"
     if os.path.exists(file_path):
         return pd.read_pickle(file_path)
     else:
@@ -140,13 +142,16 @@ def load_base_data():
         return None
 
 combined_data2 = load_base_data()
-df = combined_data2.copy()
+if combined_data2 is not None:
+    df = combined_data2.copy()
+else:
+    df = None
 
 
 #load X_test_scaled
 @st.cache_data
 def load_X_test_scaled():
-    file_path = r"C:\Users\Admin\Documents\gambling project\dataset\processed\X_test_scaled.pkl"
+    file_path = r"C:\Users\user\Documents\gambling project\dataset\processed\X_test_scaled.pkl"
     if os.path.exists(file_path):
         return joblib.load(file_path)
     else:
@@ -158,7 +163,7 @@ X_test_scaled = load_X_test_scaled()
 
 @st.cache_data
 def load_X():
-    file_path = r"C:\Users\Admin\Documents\gambling project\dataset\processed\X.pkl"
+    file_path = r"C:\Users\user\Documents\gambling project\dataset\processed\X.pkl"
     if os.path.exists(file_path):
         return joblib.load(file_path)
     else:
@@ -187,26 +192,6 @@ st.markdown(
 )
 
 if section == "OVERVIEW":
-    # ---------------------------------------------------------
-    # Title with "View Data" Toggle Button
-    # ---------------------------------------------------------
-
-    if "show_data" not in st.session_state:
-        st.session_state["show_data"] = False
-
-    if st.button("View Data"):
-        st.session_state["show_data"] = not st.session_state["show_data"]
-
-    if st.session_state["show_data"]:
-        file_path = r"C:\Users\Admin\Documents\gambling project\outputs\combined_data2.pkl"
-        if os.path.exists(file_path):
-            combined_data2 = pd.read_pickle(file_path)
-            # Center the dataframe using Streamlit's layout system
-            st.columns([1, 6, 1])  # Add padding columns to center the dataframe
-            st.dataframe(combined_data2, use_container_width=True)
-        else:
-            st.error(f"File not found: {file_path}")
-
     # ---------------------------------------------------------
     # Key Metrics Row (5 cards)
     # ---------------------------------------------------------
@@ -808,20 +793,23 @@ elif section == "SHAP EXPLAINABILITY AND FEATURE IMPORTANCE":
     st.markdown("---")
     st.markdown("<H3>SHAP EXPLAINABILITY AND FEATURE IMPORTANCE</H3>", unsafe_allow_html=True)
 
-    with st.expander("SHAP Explainability and feature importance plots"):
-                #Create SHAP explainer
-        explainer = shap.TreeExplainer(loaded_model)
+    if loaded_model is None:
+        st.warning("⚠️ Model could not be loaded. SHAP analysis is not available.")
+    else:
+        with st.expander("SHAP Explainability and feature importance plots"):
+                    #Create SHAP explainer
+            explainer = shap.TreeExplainer(loaded_model)
 
-        #Compute SHAP values for test data
-        shap_values = explainer.shap_values(X_test_scaled)
+            #Compute SHAP values for test data
+            shap_values = explainer.shap_values(X_test_scaled)
 
-        shap.summary_plot(
-            shap_values,
-            X_test_scaled,
-            feature_names=X.columns
-        )
+            shap.summary_plot(
+                shap_values,
+                X_test_scaled,
+                feature_names=X.columns
+            )
 
-        st.pyplot(plt.gcf())
+            st.pyplot(plt.gcf())
 
         st.markdown("---")
         st.markdown("Feature Importance Plot")
